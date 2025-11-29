@@ -195,7 +195,11 @@ export default function ResultsPage() {
                     <div className="mt-0.5 h-2 w-2 rounded-full bg-cyan-600"></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-900">Health Condition</p>
-                      <p className="text-xs text-slate-600">Current status: {profile.healthCondition}</p>
+                      <p className="text-xs text-slate-600">
+                        Current status: {profile.healthCondition === "Other" && profile.customHealthCondition
+                          ? profile.customHealthCondition
+                          : profile.healthCondition}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -329,7 +333,11 @@ export default function ResultsPage() {
                     <span className="text-teal-600">•</span>
                     <span>
                       Monitor and manage{" "}
-                      {profile.healthCondition !== "None" ? profile.healthCondition : "overall health"}
+                      {profile.healthCondition !== "None" 
+                        ? (profile.healthCondition === "Other" && profile.customHealthCondition 
+                          ? profile.customHealthCondition 
+                          : profile.healthCondition)
+                        : "overall health"}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">

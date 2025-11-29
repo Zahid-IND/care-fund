@@ -65,6 +65,8 @@ export default function DashboardPage() {
     area: "",
     age: "",
     healthCondition: "",
+    customHealthCondition: "",
+    monthlyIncome: "",
     pastSurgery: "",
     addictions: "",
     workShift: "",
@@ -96,6 +98,8 @@ export default function DashboardPage() {
           area: data.area || "",
           age: data.age || "",
           healthCondition: data.healthCondition || "",
+          customHealthCondition: data.customHealthCondition || "",
+          monthlyIncome: data.monthlyIncome || "",
           pastSurgery: data.pastSurgery || "",
           addictions: data.addictions || "",
           workShift: data.workShift || "",
@@ -371,6 +375,33 @@ export default function DashboardPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {formData.healthCondition === "Other" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="customHealthCondition">Specify Health Condition</Label>
+                        <Input
+                          id="customHealthCondition"
+                          type="text"
+                          value={formData.customHealthCondition}
+                          onChange={(e) => handleInputChange("customHealthCondition", e.target.value)}
+                          required
+                          placeholder="Please specify your health condition"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="monthlyIncome">Monthly Income (₹)</Label>
+                      <Input
+                        id="monthlyIncome"
+                        type="number"
+                        value={formData.monthlyIncome}
+                        onChange={(e) => handleInputChange("monthlyIncome", e.target.value)}
+                        required
+                        placeholder="50000"
+                        min="0"
+                      />
                     </div>
 
                     <div className="space-y-2">

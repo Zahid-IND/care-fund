@@ -22,6 +22,8 @@ interface UserProfile {
   area: string
   age: string
   healthCondition: string
+  customHealthCondition: string
+  monthlyIncome: string
   pastSurgery: string
   addictions: string
   workShift: string
@@ -67,6 +69,8 @@ export default function ReportPage() {
         area: data.area || "",
         age: data.age || "",
         healthCondition: data.healthCondition || "",
+        customHealthCondition: data.customHealthCondition || "",
+        monthlyIncome: data.monthlyIncome || "",
         pastSurgery: data.pastSurgery || "",
         addictions: data.addictions || "",
         workShift: data.workShift || "",
@@ -221,7 +225,15 @@ export default function ReportPage() {
               </div>
               <div>
                 <span className="font-medium text-slate-700">Health Condition:</span>
-                <p className="text-slate-600">{profile.healthCondition}</p>
+                <p className="text-slate-600">
+                  {profile.healthCondition === "Other" && profile.customHealthCondition
+                    ? profile.customHealthCondition
+                    : profile.healthCondition}
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-slate-700">Monthly Income:</span>
+                <p className="text-slate-600">₹{profile.monthlyIncome ? Number(profile.monthlyIncome).toLocaleString('en-IN') : 'N/A'}</p>
               </div>
             </div>
 
