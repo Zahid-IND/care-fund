@@ -36,7 +36,7 @@ export default function ReportPage() {
   const { data: session, status } = useSession()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [envData, setEnvData] = useState<EnvironmentalData | null>(null)
-  const [healthScore, setHealthScore] = useState(78)
+  const [healthScore, setHealthScore] = useState<number | null>(null)
   const [isLoadingEnv, setIsLoadingEnv] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
 
@@ -82,6 +82,9 @@ export default function ReportPage() {
 
       // Fetch environmental data
       fetchEnvironmentalData(data.city)
+      
+      // Load health score from previous analysis if available
+      loadHealthScore()
     } catch (error) {
       console.error("[v0] Error fetching profile:", error)
       toast({
@@ -145,6 +148,20 @@ export default function ReportPage() {
     if (aqi <= 150) return { label: "Unhealthy for Sensitive", color: "bg-orange-500", textColor: "text-orange-700" }
     if (aqi <= 200) return { label: "Unhealthy", color: "bg-red-500", textColor: "text-red-700" }
     return { label: "Very Unhealthy", color: "bg-purple-500", textColor: "text-purple-700" }
+  }
+
+  const loadHealthScore = () => {
+    try {
+      const analysisResults = sessionStorage.getItem("analysisResults")
+      if (analysisResults) {
+        const results = JSON.parse(analysisResults)
+        if (results.riskScore) {
+          setHealthScore(results.riskScore)
+        }
+      }
+    } catch (error) {
+      console.error("[Report] Error loading health score:", error)
+    }
   }
 
   const handleLogout = () => {
@@ -241,10 +258,22 @@ export default function ReportPage() {
             <div className="mt-6 rounded-lg bg-gradient-to-br from-cyan-50 to-teal-50 p-4">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-700">Health Score</span>
-                <span className="text-2xl font-bold text-cyan-600">{healthScore}</span>
+                {healthScore !== null ? (
+                  <span className="text-2xl font-bold text-cyan-600">{healthScore}</span>
+                ) : (
+                  <span className="text-sm text-slate-500">Run analysis</span>
+                )}
               </div>
-              <Progress value={healthScore} className="h-2" />
-              <p className="mt-2 text-xs text-slate-600">/ 100</p>
+              {healthScore !== null ? (
+                <>
+                  <Progress value={healthScore} className="h-2" />
+                  <p className="mt-2 text-xs text-slate-600">/ 100</p>
+                </>
+              ) : (
+                <div className="rounded bg-slate-100 py-2 text-center text-xs text-slate-500">
+                  Complete AI analysis to see your health score
+                </div>
+              )}
             </div>
           </Card>
 

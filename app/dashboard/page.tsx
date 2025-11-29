@@ -254,7 +254,7 @@ export default function DashboardPage() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             {showProfileForm ? (
-              <Card className="border-cyan-200 bg-white/90 p-6 backdrop-blur-sm">
+              <Card className="border-cyan-200 bg-white/90 p-6 backdrop-blur-sm h-full">
                 <h3 className="mb-6 text-2xl font-bold text-slate-900">
                   {profileCompleted ? "Update Your Profile" : "Complete Your Profile"}
                 </h3>
@@ -443,7 +443,7 @@ export default function DashboardPage() {
                 </form>
               </Card>
             ) : (
-              <Card className="border-cyan-200 bg-white/90 p-6 backdrop-blur-sm">
+              <Card className="border-cyan-200 bg-white/90 h-full flex align-center items-center justify-center p-3">
                 {profileCompleted ? (
                   <div className="text-center">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
