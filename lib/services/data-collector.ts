@@ -31,7 +31,7 @@ export interface CollectedData {
   realTimeData?: RealTimeData
   healthAlerts?: any[]
   dataQuality?: {
-    overall: string
+    overall: 'excellent' | 'good' | 'fair' | 'poor'
     sources: number
     realTimeDataPercentage: number
   }
