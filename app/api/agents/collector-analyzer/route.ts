@@ -21,9 +21,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User profile is required" }, { status: 400 })
     }
 
-    console.log("[Agent 1] Starting data collection and analysis...")
+    console.log("[Agent 1] Starting enhanced data collection and analysis...")
+    console.log(`[Agent 1] User: ${userProfile.occupation}, ${userProfile.city}, Age: ${userProfile.age}`)
 
-    // Step 1: Collect all data from various sources
+    // Step 1: Collect all data from various sources (now with real-time data)
     const collectedData = await collectAllData(
       userProfile.city,
       userProfile.occupation,
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
     )
 
     console.log("[Agent 1] Data collection complete")
+    if (collectedData.dataQuality) {
+      console.log(`[Agent 1] Data Quality: ${collectedData.dataQuality.overall} (${collectedData.dataQuality.realTimeDataPercentage}% real-time)`)
+    }
 
     // Step 2: Calculate risk score
     const riskCalculationInput = {
@@ -125,7 +129,7 @@ export async function POST(request: Request) {
       ]
     }
 
-    // Compile Agent 1 results
+    // Compile Agent 1 results with enhanced data
     const agent1Results: Agent1Results = {
       riskScore,
       riskLevel,
@@ -134,14 +138,33 @@ export async function POST(request: Request) {
       riskFactors,
       preventionSteps,
       geminiAnalysis,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Add enhanced data fields
+      ...(collectedData.healthAlerts && { healthAlerts: collectedData.healthAlerts }),
+      ...(collectedData.dataQuality && { dataQuality: collectedData.dataQuality }),
+      ...(collectedData.realTimeData && { 
+        realTimeDataSources: {
+          climate: collectedData.realTimeData.climate.sources,
+          deathRate: collectedData.realTimeData.deathRate.source,
+          crime: collectedData.realTimeData.crime.source,
+          occupationDeathRate: collectedData.realTimeData.occupationDeathRate.source
+        }
+      })
     }
 
     console.log("[Agent 1] Analysis complete")
+    console.log(`[Agent 1] Risk Score: ${riskScore}/100 (${riskLevel})`)
+    console.log(`[Agent 1] Risk Factors: ${riskFactors.length}`)
+    console.log(`[Agent 1] Prevention Steps: ${preventionSteps.length}`)
 
     return NextResponse.json({
       success: true,
-      data: agent1Results
+      data: agent1Results,
+      metadata: {
+        dataQuality: collectedData.dataQuality,
+        processingTime: Date.now() - Date.now(),
+        version: '2.0-enhanced'
+      }
     })
 
   } catch (error) {

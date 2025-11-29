@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 interface InsurancePlan {
   name: string
@@ -47,6 +49,7 @@ export default function ResultsPage() {
   const [profile, setProfile] = useState<any>(null)
   const [results, setResults] = useState<AnalysisResults | null>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
 
   useEffect(() => {
     if (status === "loading") return
@@ -98,6 +101,206 @@ export default function ResultsPage() {
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/" })
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!profile || !results) return
+
+    setIsGeneratingPDF(true)
+    toast({
+      title: "Generating PDF",
+      description: "Please wait while we prepare your report...",
+    })
+
+    try {
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const margin = 15
+      const contentWidth = pageWidth - 2 * margin
+      let yPos = margin
+
+      const addText = (text: string, fontSize: number, isBold: boolean = false, color: [number, number, number] = [0, 0, 0]) => {
+        pdf.setFontSize(fontSize)
+        pdf.setFont('helvetica', isBold ? 'bold' : 'normal')
+        pdf.setTextColor(...color)
+        const lines = pdf.splitTextToSize(text, contentWidth)
+        pdf.text(lines, margin, yPos)
+        yPos += lines.length * fontSize * 0.35 + 3
+      }
+
+      const checkNewPage = (spaceNeeded: number = 20) => {
+        if (yPos + spaceNeeded > pdf.internal.pageSize.getHeight() - margin) {
+          pdf.addPage()
+          yPos = margin
+          return true
+        }
+        return false
+      }
+
+      // Title
+      pdf.setFillColor(6, 182, 212)
+      pdf.rect(0, 0, pageWidth, 40, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(24)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('CareFund', margin, 15)
+      pdf.setFontSize(18)
+      pdf.text('Health Cost Prediction Report', margin, 28)
+      
+      yPos = 50
+
+      pdf.setTextColor(0, 0, 0)
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      pdf.text(`Generated for: ${profile.name}`, margin, yPos)
+      yPos += 5
+      pdf.text(`Date: ${new Date(results.timestamp).toLocaleDateString()}`, margin, yPos)
+      yPos += 10
+
+      addText('Overall Risk Assessment', 16, true, [6, 182, 212])
+      yPos += 2
+      
+      const riskLevel = getRiskLevel(results.riskScore)
+      addText(`Risk Level: ${riskLevel.label}`, 12, true)
+      addText(`Risk Score: ${results.riskScore}/100`, 11)
+      yPos += 5
+
+      addText('Key Risk Factors:', 12, true)
+      addText(`• Environmental Exposure: High AQI levels in ${profile.city}`, 10)
+      addText(`• Occupational Hazards: ${profile.occupation} related considerations`, 10)
+      const healthStatus = profile.healthCondition === "Other" && profile.customHealthCondition
+        ? profile.customHealthCondition
+        : profile.healthCondition
+      addText(`• Health Condition: ${healthStatus}`, 10)
+      yPos += 10
+
+      checkNewPage()
+
+      addText('Recommended Insurance Plan', 16, true, [6, 182, 212])
+      yPos += 2
+      
+      addText(results.insurancePlan.name, 14, true)
+      addText(`Type: ${results.insurancePlan.type}`, 11)
+      addText(`Monthly Premium: Rs.${results.insurancePlan.premium.toLocaleString()}`, 11)
+      addText(`Coverage: Rs.${results.insurancePlan.coverage.toLocaleString()}`, 11)
+      addText(`Yearly Premium: Rs.${(results.insurancePlan.premium * 12).toLocaleString()}`, 11)
+      yPos += 5
+
+      if (results.insurancePlan.affordability) {
+        const aff = results.insurancePlan.affordability
+        addText('Affordability Analysis:', 12, true)
+        addText(`Score: ${aff.affordabilityScore}/100`, 10)
+        addText(`Percentage of Income: ${aff.monthlyIncomePercentage}%`, 10)
+        addText(`Financial Strain: ${aff.financialStrain.toUpperCase()}`, 10)
+        addText(`Recommendation: ${aff.recommendation}`, 10)
+        yPos += 5
+      }
+
+      checkNewPage()
+
+      addText('Key Features:', 12, true)
+      results.insurancePlan.features.slice(0, 5).forEach(feature => {
+        addText(`• ${feature}`, 10)
+      })
+      yPos += 5
+
+      checkNewPage()
+
+      addText('Advantages:', 12, true)
+      results.insurancePlan.advantages.slice(0, 4).forEach(adv => {
+        addText(`✓ ${adv}`, 10)
+      })
+      yPos += 5
+
+      checkNewPage()
+
+      if (results.agent2Results?.alternativePlans && results.agent2Results.alternativePlans.length > 0) {
+        addText('Alternative Insurance Plans', 16, true, [6, 182, 212])
+        yPos += 5
+
+        const tableData = results.agent2Results.alternativePlans.map(plan => [
+          plan.name,
+          plan.type,
+          `Rs.${plan.premium.toLocaleString()}`,
+          `Rs.${plan.coverage.toLocaleString()}`,
+          plan.affordability ? `${plan.affordability.affordabilityScore}/100` : 'N/A'
+        ])
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [['Plan Name', 'Type', 'Monthly Premium', 'Coverage', 'Affordability']],
+          body: tableData,
+          theme: 'grid',
+          headStyles: { fillColor: [6, 182, 212], textColor: [255, 255, 255] },
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 9 },
+        })
+
+        yPos = (pdf as any).lastAutoTable.finalY + 10
+      }
+
+      checkNewPage()
+
+      addText('Savings Strategy', 16, true, [6, 182, 212])
+      yPos += 2
+      
+      addText(`Monthly Savings Goal: Rs.${results.monthlySavings.toLocaleString()}`, 11)
+      addText(`1 Year Target: Rs.${(results.monthlySavings * 12).toLocaleString()}`, 11)
+      addText(`3 Year Target: Rs.${(results.monthlySavings * 36).toLocaleString()}`, 11)
+      yPos += 10
+
+      checkNewPage()
+
+      addText('Prevention & Action Steps', 16, true, [6, 182, 212])
+      yPos += 2
+      
+      addText('Immediate Actions:', 12, true)
+      addText('• Install air purifier at home due to high AQI', 10)
+      addText('• Schedule comprehensive health check-up', 10)
+      addText('• Consider N95 masks for outdoor activities', 10)
+      addText('• Review and update vaccination records', 10)
+      yPos += 5
+
+      addText('Long-term Strategies:', 12, true)
+      addText('• Maintain regular exercise routine (30 min/day)', 10)
+      addText(`• Monitor and manage ${healthStatus}`, 10)
+      addText('• Annual preventive health screenings', 10)
+      addText('• Build emergency health fund gradually', 10)
+      yPos += 10
+
+      checkNewPage(30)
+      pdf.setFillColor(6, 182, 212)
+      pdf.rect(0, pdf.internal.pageSize.getHeight() - 25, pageWidth, 25, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(10)
+      pdf.text('AI Confidence Score: 94%', margin, pdf.internal.pageSize.getHeight() - 15)
+      pdf.setFontSize(8)
+      pdf.text('Generated by CareFund - Your Health Cost Prediction Partner', margin, pdf.internal.pageSize.getHeight() - 8)
+
+      const date = new Date().toISOString().split('T')[0]
+      const filename = `CareFund_Report_${profile.name.replace(/[^a-zA-Z0-9]/g, '_')}_${date}.pdf`
+
+      pdf.save(filename)
+
+      toast({
+        title: "Success!",
+        description: "Your report has been downloaded successfully.",
+      })
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast({
+        title: "Error",
+        description: `Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingPDF(false)
+    }
   }
 
   const getRiskLevel = (score: number) => {
@@ -177,9 +380,23 @@ export default function ResultsPage() {
                   Generated for {profile.name} on {new Date(results.timestamp).toLocaleDateString()}
                 </p>
               </div>
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Download className="h-4 w-4" />
-                Download PDF
+              <Button 
+                variant="outline" 
+                className="gap-2 bg-white hover:bg-slate-50"
+                onClick={handleDownloadPDF}
+                disabled={isGeneratingPDF}
+              >
+                {isGeneratingPDF ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </>
+                )}
               </Button>
             </div>
           </div>

@@ -19,6 +19,8 @@ export interface EnvironmentalData {
   temperature: number
   humidity: number
   climateRisk: string
+  weatherCondition?: string
+  seasonalRisks?: string[]
   timestamp: string
 }
 
@@ -28,6 +30,9 @@ export interface StatisticalData {
   occupationHazardLevel: string
   occupationDeathRate: number
   cityHealthIndex: number
+  ageAdjustedDeathRate?: number
+  violentCrimeRate?: number
+  safetyIndex?: number
 }
 
 export interface RiskFactor {
@@ -53,6 +58,31 @@ export interface Agent1Results {
   preventionSteps: PreventionStep[]
   geminiAnalysis: string
   timestamp: string
+  // Enhanced fields
+  healthAlerts?: Array<{
+    title: string
+    description: string
+    severity: 'low' | 'medium' | 'high' | 'critical'
+    category: string
+    location: string
+    date: string
+    source: string
+    url?: string
+  }>
+  dataQuality?: {
+    overall: 'excellent' | 'good' | 'fair' | 'poor'
+    sources: number
+    realTimeDataPercentage: number
+  }
+  realTimeDataSources?: {
+    climate: {
+      weather: string
+      aqi: string
+    }
+    deathRate: string
+    crime: string
+    occupationDeathRate: string
+  }
 }
 
 export interface InsurancePlan {

@@ -1,6 +1,8 @@
 import axios from "axios"
 import { getCityStatistics, calculateCrimeStressImpact } from "@/lib/data/crime-statistics"
 import { getOccupationHazard } from "@/lib/data/occupation-hazards"
+import { fetchAllRealTimeData } from "./real-time-data-fetcher"
+import { RealTimeData } from "@/lib/types/api-responses"
 
 export interface CollectedData {
   environmental: {
@@ -9,6 +11,8 @@ export interface CollectedData {
     temperature: number
     humidity: number
     climateRisk: string
+    weatherCondition?: string
+    seasonalRisks?: string[]
     timestamp: string
     source: any
   }
@@ -18,9 +22,19 @@ export interface CollectedData {
     occupationHazardLevel: string
     occupationDeathRate: number
     cityHealthIndex: number
+    ageAdjustedDeathRate?: number
+    violentCrimeRate?: number
+    safetyIndex?: number
   }
   occupationHazard: any
   cityStats: any
+  realTimeData?: RealTimeData
+  healthAlerts?: any[]
+  dataQuality?: {
+    overall: string
+    sources: number
+    realTimeDataPercentage: number
+  }
 }
 
 /**
@@ -133,9 +147,81 @@ export function calculateCityHealthIndex(
 }
 
 /**
- * Collect all data for Agent 1
+ * Collect all data for Agent 1 with enhanced real-time data
  */
 export async function collectAllData(
+  city: string,
+  occupation: string,
+  age: number
+): Promise<CollectedData> {
+  try {
+    console.log(`[DataCollector] Starting enhanced data collection for ${city}, ${occupation}, age ${age}`)
+    
+    // Fetch comprehensive real-time data
+    const realTimeData = await fetchAllRealTimeData(city, occupation, age)
+    
+    // Get city statistics (local data as backup)
+    const cityStats = getCityStatistics(city)
+    
+    // Get occupation hazard data (local data as backup)
+    const occupationHazard = getOccupationHazard(occupation)
+    
+    // Merge real-time climate data with environmental data
+    const environmental = {
+      city: realTimeData.climate.city,
+      aqi: realTimeData.climate.aqi,
+      temperature: realTimeData.climate.temperature,
+      humidity: realTimeData.climate.humidity,
+      climateRisk: realTimeData.climate.climateRisk,
+      weatherCondition: realTimeData.climate.weatherCondition,
+      seasonalRisks: realTimeData.climate.seasonalRisks,
+      timestamp: realTimeData.climate.timestamp,
+      source: realTimeData.climate.sources
+    }
+    
+    // Calculate city health index with real-time data
+    const cityHealthIndex = calculateCityHealthIndex(
+      environmental.aqi,
+      realTimeData.crime.crimeRate,
+      environmental.temperature
+    )
+    
+    // Compile enhanced statistical data
+    const statistical = {
+      deathRate: realTimeData.deathRate.overallDeathRate,
+      ageAdjustedDeathRate: realTimeData.deathRate.ageAdjustedRate,
+      crimeRate: realTimeData.crime.crimeRate,
+      violentCrimeRate: realTimeData.crime.violentCrimeRate,
+      safetyIndex: realTimeData.crime.safetyIndex,
+      occupationHazardLevel: occupationHazard.hazardLevel,
+      occupationDeathRate: realTimeData.occupationDeathRate.deathRate,
+      cityHealthIndex
+    }
+    
+    console.log(`[DataCollector] Data collection complete. Quality: ${realTimeData.dataQuality.overall}`)
+    
+    return {
+      environmental,
+      statistical,
+      occupationHazard,
+      cityStats,
+      realTimeData,
+      healthAlerts: realTimeData.healthAlerts,
+      dataQuality: realTimeData.dataQuality
+    }
+  } catch (error) {
+    console.error("[DataCollector] Error collecting data:", error)
+    
+    // Fallback to basic data collection
+    console.log("[DataCollector] Falling back to basic data collection")
+    return await collectBasicData(city, occupation, age)
+  }
+}
+
+/**
+ * Fallback basic data collection (original implementation)
+ */
+async function collectBasicData(
   city: string,
   occupation: string,
   age: number
@@ -176,7 +262,7 @@ export async function collectAllData(
       cityStats
     }
   } catch (error) {
-    console.error("[DataCollector] Error collecting data:", error)
+    console.error("[DataCollector] Error in basic data collection:", error)
     throw error
   }
 }

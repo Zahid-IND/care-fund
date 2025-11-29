@@ -10,7 +10,7 @@ export interface RiskCalculationInput {
 }
 
 /**
- * Calculate overall risk score (0-100)
+ * Calculate overall risk score (0-100) with enhanced real-time data
  */
 export function calculateRiskScore(input: RiskCalculationInput): number {
   let score = 0
@@ -18,20 +18,31 @@ export function calculateRiskScore(input: RiskCalculationInput): number {
   // 1. Base risk (10 points)
   score += 10
   
-  // 2. Age factor (0-20 points)
+  // 2. Age factor (0-20 points) - Enhanced with age-adjusted death rate
   const age = input.userProfile.age
   if (age > 60) score += 20
   else if (age > 50) score += 15
   else if (age > 40) score += 10
   else if (age > 30) score += 5
   
-  // 3. Environmental factors (0-25 points)
+  // Additional age-adjusted death rate impact (if available)
+  if (input.statisticalData.ageAdjustedDeathRate) {
+    const ageDeathRateImpact = Math.min((input.statisticalData.ageAdjustedDeathRate / 20) * 5, 5)
+    score += ageDeathRateImpact
+  }
+  
+  // 3. Environmental factors (0-25 points) - Enhanced with seasonal risks
   const aqi = input.environmentalData.aqi
   if (aqi > 200) score += 25
   else if (aqi > 150) score += 20
   else if (aqi > 100) score += 15
   else if (aqi > 50) score += 10
   else score += 5
+  
+  // Additional seasonal risk impact
+  if (input.environmentalData.seasonalRisks && input.environmentalData.seasonalRisks.length > 0) {
+    score += Math.min(input.environmentalData.seasonalRisks.length * 2, 5)
+  }
   
   // 4. Occupation hazard (0-20 points)
   const occupationRisk = input.occupationHazard.riskScore
@@ -59,9 +70,21 @@ export function calculateRiskScore(input: RiskCalculationInput): number {
     score += 3
   }
   
-  // 9. Crime-related stress (0-10 points)
+  // 9. Crime-related stress (0-10 points) - Enhanced with violent crime rate
   const crimeStressImpact = calculateCrimeStressImpact(input.cityStats.crimeRate)
   score += Math.min(crimeStressImpact, 10)
+  
+  // Additional violent crime impact
+  if (input.statisticalData.violentCrimeRate && input.statisticalData.violentCrimeRate > 30) {
+    score += Math.min((input.statisticalData.violentCrimeRate / 10), 5)
+  }
+  
+  // 10. Safety index impact (0-5 points)
+  if (input.statisticalData.safetyIndex && input.statisticalData.safetyIndex < 60) {
+    score += 5
+  } else if (input.statisticalData.safetyIndex && input.statisticalData.safetyIndex < 70) {
+    score += 3
+  }
   
   // Cap at 100
   return Math.min(Math.round(score), 100)
@@ -78,26 +101,39 @@ export function getRiskLevel(score: number): "low" | "medium" | "high" | "critic
 }
 
 /**
- * Generate detailed risk factors
+ * Generate detailed risk factors with enhanced real-time data
  */
 export function generateRiskFactors(input: RiskCalculationInput): RiskFactor[] {
   const factors: RiskFactor[] = []
   
-  // Environmental risk
+  // Environmental risk - Enhanced with weather condition
   const aqi = input.environmentalData.aqi
+  const weatherCondition = input.environmentalData.weatherCondition || ''
+  
   if (aqi > 150) {
     factors.push({
       category: "Air Quality",
       level: aqi > 200 ? "critical" : "high",
-      description: `AQI of ${aqi} poses significant respiratory health risks`,
+      description: `AQI of ${aqi} poses significant respiratory health risks${weatherCondition ? ` (Current: ${weatherCondition})` : ''}`,
       impact: aqi > 200 ? 25 : 20
     })
   } else if (aqi > 100) {
     factors.push({
       category: "Air Quality",
       level: "medium",
-      description: `AQI of ${aqi} may affect sensitive individuals`,
+      description: `AQI of ${aqi} may affect sensitive individuals${weatherCondition ? ` (Current: ${weatherCondition})` : ''}`,
       impact: 15
+    })
+  }
+  
+  // Seasonal risks
+  if (input.environmentalData.seasonalRisks && input.environmentalData.seasonalRisks.length > 0) {
+    const seasonalRiskLevel = input.environmentalData.seasonalRisks.length > 2 ? "high" : "medium"
+    factors.push({
+      category: "Seasonal Health Risks",
+      level: seasonalRiskLevel,
+      description: input.environmentalData.seasonalRisks.join('; '),
+      impact: input.environmentalData.seasonalRisks.length * 2
     })
   }
   
@@ -153,13 +189,27 @@ export function generateRiskFactors(input: RiskCalculationInput): RiskFactor[] {
     })
   }
   
-  // Crime-related stress
+  // Crime-related stress - Enhanced with violent crime data
   if (input.cityStats.crimeRate > 500) {
+    const violentCrimeInfo = input.statisticalData.violentCrimeRate 
+      ? ` including ${input.statisticalData.violentCrimeRate.toFixed(1)} violent crimes per 100k`
+      : ''
+    
     factors.push({
       category: "Environmental Stress",
       level: input.cityStats.crimeRate > 1000 ? "high" : "medium",
-      description: `High crime rate (${input.cityStats.crimeRate} per 100k) contributes to chronic stress`,
+      description: `High crime rate (${input.cityStats.crimeRate} per 100k${violentCrimeInfo}) contributes to chronic stress`,
       impact: calculateCrimeStressImpact(input.cityStats.crimeRate)
+    })
+  }
+  
+  // Safety index
+  if (input.statisticalData.safetyIndex && input.statisticalData.safetyIndex < 60) {
+    factors.push({
+      category: "City Safety",
+      level: input.statisticalData.safetyIndex < 50 ? "high" : "medium",
+      description: `Low safety index (${input.statisticalData.safetyIndex}/100) indicates higher security concerns`,
+      impact: 5
     })
   }
   
