@@ -191,7 +191,7 @@ export default function ReportPage() {
       <header className="border-b border-white/50 bg-white/70 backdrop-blur-sm">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
-            <Shield className="h-8 w-8 text-cyan-600" />
+            <img src={"/logo.jpg"} className="w-[50px]"/>
             <span className="text-2xl font-bold text-slate-900">CareFund</span>
           </div>
           <div className="flex items-center gap-4">
